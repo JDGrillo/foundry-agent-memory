@@ -1,8 +1,10 @@
 # Foundry Agent Memory — Demo Project
 
-Practical demonstrations of [Microsoft Foundry Agents](https://learn.microsoft.com/azure/ai-foundry/agents/concepts/what-is-memory) long-term memory capabilities using the Microsoft Agent Framework.
+> **Status: Planning / Pre-Implementation.** Requirements and task plan are approved (PRD v0.1.0, Task Plan v0.2.0). Source code has not been implemented yet. See [Implementation Status](#implementation-status) for details.
 
-This project implements three real-world scenarios that showcase how agent memory creates tangible value:
+Practical demonstrations of [Microsoft Foundry Agents](https://learn.microsoft.com/azure/ai-foundry/agents/concepts/what-is-memory) long-term memory capabilities, built on the **Foundry Agents Service** (`azure-ai-agents`) with portal-visible agents and memory stores.
+
+This project will implement three real-world scenarios that showcase how agent memory creates tangible value:
 
 | Scenario | Memory Pattern | Value Demonstrated |
 |----------|---------------|-------------------|
@@ -10,61 +12,91 @@ This project implements three real-world scenarios that showcase how agent memor
 | **Standup Bot** | Group/shared memory | Any team member accesses knowledge accumulated across standups |
 | **Customer Success** | Hybrid (per-user + group) | Seamless handoffs between team members with zero context loss |
 
+A core requirement is that **every agent and memory store created by these scenarios is visible and inspectable in the Azure AI Foundry portal** — agents are created via `project_client.agents.create_agent()` (Foundry Agents Service), conversations run through the portal-visible threads/runs API, and memory data can be inspected via portal or a planned `inspect_memory.py` utility.
+
 ---
 
-## Architecture Overview
+## Implementation Status
+
+This repository currently contains **only documentation, configuration, and planning artifacts**. No source code has been written yet. The `src/` directory will be created as part of [DEV-001](docs/tasks/dev/DEV-001.md).
+
+### Task Plan (12 tasks, 4 phases)
+
+See [docs/tasks/README.md](docs/tasks/README.md) for the master plan and [docs/tasks/dev/](docs/tasks/dev/) for individual task files.
+
+| Phase | Goal | Tasks |
+|-------|------|-------|
+| **1: Foundation** | Project structure, dependencies, env config | [DEV-001](docs/tasks/dev/DEV-001.md), [DEV-002](docs/tasks/dev/DEV-002.md) |
+| **2: Core Infrastructure** | Memory store manager, Foundry Agents Service agent definitions, user simulator, console formatter | [DEV-003](docs/tasks/dev/DEV-003.md), [DEV-004](docs/tasks/dev/DEV-004.md), [DEV-005](docs/tasks/dev/DEV-005.md), [DEV-006](docs/tasks/dev/DEV-006.md) |
+| **3: Scenarios** | Three portal-visible scenario scripts | [DEV-007](docs/tasks/dev/DEV-007.md), [DEV-008](docs/tasks/dev/DEV-008.md), [DEV-009](docs/tasks/dev/DEV-009.md) |
+| **4: Utilities & Docs** | Cleanup, memory inspection, this README expansion | [DEV-010](docs/tasks/dev/DEV-010.md), [DEV-011](docs/tasks/dev/DEV-011.md), [DEV-012](docs/tasks/dev/DEV-012.md) |
+
+All tasks are at status `Backlog`. The "Quick Start", "Cleanup", and per-scenario run instructions in this README describe the **target experience** once implementation is complete — they will not work today.
+
+---
+
+## Planned Architecture
 
 ```mermaid
 graph TB
-    subgraph "Scenario Scripts"
-        S1[run_helpdesk.py]
-        S2[run_standup.py]
-        S3[run_customer_success.py]
+    Dev[Developer / Demo Engineer]
+
+    subgraph "src/ (to be implemented)"
+        Scripts[Scenario Scripts]
+        Mem[Memory Store Manager]
+        Agents[Agent Definitions]
+        Common[Env / Console / User Sim]
     end
 
-    subgraph "Utilities"
-        MM[Memory Store Manager]
-        ENV[Environment Config]
-    end
-
-    subgraph "Azure AI Foundry"
-        AIP[AIProjectClient]
+    subgraph "Azure AI Foundry (Portal-Visible)"
+        AIP[AIProjectClient<br/>azure-ai-projects]
+        AC[AgentsClient<br/>azure-ai-agents]
         subgraph "Memory Stores"
-            MS1["helpdesk-memory<br/>(per-user scope)"]
-            MS2["standup-memory<br/>(group scope)"]
-            MS3a["cs-user-memory<br/>(per-CSM scope)"]
-            MS3b["cs-team-memory<br/>(shared account scope)"]
+            MS1["helpdesk-memory<br/>per-user scope"]
+            MS2["standup-memory<br/>group scope"]
+            MS3a["cs-user-memory<br/>per-CSM scope"]
+            MS3b["cs-team-memory<br/>shared account scope"]
         end
-        subgraph "Model Deployments"
-            Chat["Chat Model<br/>gpt-4o / gpt-5.2"]
-            Embed["Embedding Model<br/>text-embedding-3-small"]
+        subgraph "Foundry-Hosted Agents"
+            A1["IT Help Desk Agent<br/>+ MemorySearchTool"]
+            A2["Standup Bot<br/>+ MemorySearchTool"]
+            A3["Customer Success Agent<br/>+ 2x MemorySearchTool"]
         end
+        Threads[Threads & Runs<br/>portal-visible]
+        Models[gpt-4o / text-embedding-3-small]
     end
 
-    S1 --> MM
-    S2 --> MM
-    S3 --> MM
-    MM --> AIP
+    Dev --> Scripts
+    Scripts --> Mem
+    Scripts --> Agents
+    Scripts --> Common
+    Mem --> AIP
+    Agents --> AC
     AIP --> MS1
     AIP --> MS2
     AIP --> MS3a
     AIP --> MS3b
-    MS1 --> Embed
-    MS2 --> Embed
-    MS3a --> Embed
-    MS3b --> Embed
-    S1 --> Chat
-    S2 --> Chat
-    S3 --> Chat
+    AC --> A1
+    AC --> A2
+    AC --> A3
+    A1 -.->|MemorySearchTool| MS1
+    A2 -.->|MemorySearchTool| MS2
+    A3 -.->|MemorySearchTool| MS3a
+    A3 -.->|MemorySearchTool| MS3b
+    A1 --> Threads
+    A2 --> Threads
+    A3 --> Threads
 ```
+
+For full architectural detail, see [docs/prd/01-architecture.md](docs/prd/01-architecture.md).
 
 ---
 
-## Scenarios
+## Planned Scenarios
 
-### IT Help Desk (Per-User Memory)
+### IT Help Desk (Per-User Memory) — [DEV-007](docs/tasks/dev/DEV-007.md)
 
-**What it shows:** An agent that remembers individual users across sessions — their device, OS, past issues, and resolutions.
+**What it will show:** An agent that remembers individual users across sessions — their device, OS, past issues, and resolutions.
 
 **Memory configuration:**
 - Store: `helpdesk-memory`
@@ -72,22 +104,16 @@ graph TB
 - Chat summary: ✅
 - User profile: ✅ (role, department, OS, device model, RAM, software versions, past issues)
 
-**Run:**
-```bash
-python -m src.scenarios.run_helpdesk
-```
-
-**What you'll see:**
-
+**Planned flow:**
 - **Session 1** — No prior memory. Agent asks clarifying questions about OS, device model, and setup.
-- **Session 2** — Memory recall. Agent skips known information: *"Since you're on your Surface Pro 9 with the prior crash history, let's check if the display driver update from last time held..."*
+- **Session 2** — Memory recall. Agent references stored profile: *"Since you're on your Surface Pro 9 with the prior crash history…"*
 - **Session 3** — Profile evolution. Agent leverages accumulated context for faster, more targeted support.
 
 ---
 
-### Standup Bot (Group Memory)
+### Standup Bot (Group Memory) — [DEV-008](docs/tasks/dev/DEV-008.md)
 
-**What it shows:** A shared team memory that persists across daily standups — tracks blockers, progress, and patterns.
+**What it will show:** A shared team memory that persists across daily standups — tracks blockers, progress, and patterns.
 
 **Memory configuration:**
 - Store: `standup-memory`
@@ -95,22 +121,16 @@ python -m src.scenarios.run_helpdesk
 - Chat summary: ✅
 - User profile: ❌
 
-**Run:**
-```bash
-python -m src.scenarios.run_standup
-```
-
-**What you'll see:**
-
+**Planned flow:**
 - **Day 1** — Initial standup with 3 team members. Agent records status and blockers.
 - **Day 2** — Contextual follow-ups. Agent detects recurring blockers: *"This is day 2 blocked on API team. Should we escalate?"*
 - **Summary** — Agent generates a standup summary highlighting patterns and action items.
 
 ---
 
-### Customer Success (Hybrid Per-User + Group Memory)
+### Customer Success (Hybrid Per-User + Group Memory) — [DEV-009](docs/tasks/dev/DEV-009.md)
 
-**What it shows:** Dual memory stores — individual CSM context (interaction style, portfolio) combined with shared account intelligence accessible to the entire team.
+**What it will show:** Dual memory stores — individual CSM context (style, portfolio) combined with shared account intelligence accessible to the whole team.
 
 **Memory configuration:**
 - User store: `cs-user-memory` — scope: `csm_{name}` (per-CSM)
@@ -118,33 +138,29 @@ python -m src.scenarios.run_standup
 - Chat summary: ✅ (both stores)
 - User profile: ✅ (user store only)
 
-**Run:**
-```bash
-python -m src.scenarios.run_customer_success
-```
-
-**What you'll see:**
-
-- **Sarah** — Builds account knowledge through client interactions; personal context + shared intel accumulate.
-- **Mike (handoff)** — Picks up the account with full context from shared memory; no "starting from scratch."
+**Planned flow:**
+- **Sarah** — Builds account knowledge; personal context + shared intel accumulate.
+- **Mike (handoff)** — Picks up the account with full context from shared memory.
 - **Sarah returns** — Finds all accumulated intelligence from Mike's interactions in shared memory.
 
 ---
 
-## Prerequisites
+## Prerequisites (for when implementation is complete)
 
 - **Python 3.11+**
 - **Azure subscription** with:
   - AI Foundry project provisioned
-  - Chat model deployment (e.g., `gpt-4o`)
+  - Chat model deployment (e.g., `gpt-4o` or `gpt-5.2`)
   - Embedding model deployment (e.g., `text-embedding-3-small`)
-  - System-assigned managed identity enabled on project
-  - **Azure AI User** role assigned to project managed identity on AI Services resource
+  - Foundry Memory Stores enabled (preview feature)
+  - Appropriate RBAC role on the AI Services resource (e.g., **Azure AI User**)
 - **Azure CLI** authenticated (`az login`)
 
 ---
 
-## Quick Start
+## Target Quick Start (post-implementation)
+
+> The commands below will work once Phases 1–3 are complete. Today, only the configuration files exist.
 
 ```bash
 # Clone
@@ -157,15 +173,17 @@ cp .env.example .env
 
 # Install
 python -m venv .venv
-.venv\Scripts\activate  # Windows
-# source .venv/bin/activate  # macOS/Linux
+.venv\Scripts\activate          # Windows
+# source .venv/bin/activate     # macOS/Linux
 pip install -r requirements.txt
 
-# Run a scenario
-python -m src.scenarios.run_helpdesk
-python -m src.scenarios.run_standup
-python -m src.scenarios.run_customer_success
+# Run a scenario (after DEV-007/008/009 are implemented)
+python -m src.scenarios.helpdesk
+python -m src.scenarios.standup
+python -m src.scenarios.customer_success
 ```
+
+After running, open the [Azure AI Foundry portal](https://ai.azure.com) → your project → **Agents** blade to see the created agent and its `MemorySearchTool`. Open the **Memory** section to inspect the store configuration and stored data.
 
 ---
 
@@ -180,73 +198,98 @@ python -m src.scenarios.run_customer_success
 
 ---
 
-## Cleanup
+## Planned Utilities
 
-Remove demo memory stores from your Foundry project:
+### Cleanup ([DEV-010](docs/tasks/dev/DEV-010.md))
+Will remove demo memory stores **and** Foundry-hosted agents created by this project:
 
 ```bash
-python -m src.cleanup                       # Interactive — prompts before deleting
-python -m src.cleanup --scenario helpdesk   # Delete only helpdesk stores
-python -m src.cleanup --all                 # Delete all demo stores without prompting
+python cleanup.py                       # Interactive — prompts before deleting
+python cleanup.py --scenario helpdesk   # Delete only helpdesk resources
+python cleanup.py --all                 # Delete all demo resources without prompting
+```
+
+### Memory Inspection ([DEV-011](docs/tasks/dev/DEV-011.md))
+Will display stored memory contents (scopes, profiles, chat summaries) via the SDK as a portal-inspection alternative:
+
+```bash
+python inspect_memory.py                          # Inspect all demo stores
+python inspect_memory.py --store helpdesk-memory  # One store
+python inspect_memory.py --scope user_123         # One scope
 ```
 
 ---
 
-## Project Structure
+## Current Repository Structure
 
 ```
 foundry-agent-memory/
-├── .env.example                    # Environment template (copy to .env)
-├── .gitignore
-├── requirements.txt                # Python dependencies
+├── .env.example                    # Environment template
+├── .gitignore                      # Includes .env
+├── requirements.txt                # Python dependencies (azure-ai-agents, azure-ai-projects, azure-identity, python-dotenv)
 ├── pyproject.toml                  # Project metadata
 ├── README.md                       # This file
-├── docs/
-│   ├── prd/
-│   │   ├── 00-overview.md          # Product requirements overview
-│   │   ├── 01-architecture.md      # Architecture & data model
-│   │   ├── 02-scenarios.md         # Detailed scenario specifications
-│   │   ├── 03-non-functional-requirements.md
-│   │   └── 04-task-backlog.md      # Development task breakdown
-│   └── tasks/
-│       ├── README.md               # Task execution order
-│       └── dev/
-│           └── DEV-001..008.md     # Individual task files
-└── src/
-    ├── __init__.py
-    ├── cleanup.py                  # Memory store cleanup utility
-    ├── scenarios/
-    │   ├── __init__.py
-    │   ├── helpdesk.py             # IT Help Desk scenario logic
-    │   ├── run_helpdesk.py         # Help Desk entry point
-    │   ├── standup.py              # Standup Bot scenario logic
-    │   ├── run_standup.py          # Standup Bot entry point
-    │   ├── customer_success.py     # Customer Success scenario logic
-    │   └── run_customer_success.py # Customer Success entry point
-    └── utils/
-        ├── __init__.py
-        ├── env.py                  # Environment variable loading
-        ├── memory_manager.py       # Memory store CRUD operations
-        └── console.py             # Rich console output formatting
+└── docs/
+    ├── prd/
+    │   ├── 00-overview.md          # Product overview & success metrics
+    │   ├── 01-architecture.md      # Architecture, data model, design decisions
+    │   ├── 02-scenarios.md         # Functional requirements (REQ-F-001..036)
+    │   ├── 03-non-functional-requirements.md
+    │   └── 04-task-backlog.md      # PRD-level task backlog
+    └── tasks/
+        ├── README.md               # Master task plan v0.2.0
+        └── dev/
+            └── DEV-001..012.md     # Individual implementation tasks
 ```
+
+### Planned `src/` Structure (to be created in DEV-001)
+
+```
+src/
+├── __init__.py
+├── common/
+│   ├── env.py                      # DEV-002: env var loading & validation
+│   └── user_simulator.py           # DEV-005: scripted user messages
+├── memory/
+│   ├── store_manager.py            # DEV-003: memory store CRUD via AIProjectClient
+│   └── config.py                   # DEV-003: per-scenario store configuration presets
+├── agents/
+│   └── agent_definitions.py        # DEV-004: Foundry Agents Service agent creation + threads/runs helpers
+├── scenarios/
+│   ├── helpdesk.py                 # DEV-007
+│   ├── standup.py                  # DEV-008
+│   └── customer_success.py         # DEV-009
+└── console.py                      # DEV-006: rich output formatting
+```
+
+Plus root-level utilities `cleanup.py` and `inspect_memory.py`.
 
 ---
 
-## Troubleshooting
+## Key Design Decisions
 
-| Issue | Solution |
-|-------|----------|
-| `RuntimeError: Missing required environment variables` | Copy `.env.example` to `.env` and fill in all values |
-| `AuthenticationError` | Run `az login` and ensure the correct subscription is selected |
-| `No embedding model available` | Deploy `text-embedding-3-small` in your AI Foundry project |
-| `Memory store creation fails` | Verify managed identity is enabled and has **Azure AI User** role on the AI Services resource |
-| `ModuleNotFoundError` | Ensure you activated the virtual environment and ran `pip install -r requirements.txt` |
+See [docs/prd/01-architecture.md § 6](docs/prd/01-architecture.md) for full rationale. Highlights:
+
+- **ADD-007 (Accepted)** — Agents are created via the Foundry Agents Service (`project_client.agents.create_agent()`) with `MemorySearchTool`, NOT via the local Agent Framework. This is required for portal visibility.
+- **ADD-008 (Accepted)** — Memory data must be inspectable post-demo, either via the Foundry portal or via the `inspect_memory.py` utility.
+- **ADD-001 (Accepted)** — Each scenario is a self-contained CLI script, not a unified application.
+
+---
+
+## How to Contribute / Continue Implementation
+
+1. Pick the next unblocked task from [docs/tasks/README.md](docs/tasks/README.md) (start with [DEV-001](docs/tasks/dev/DEV-001.md))
+2. Read the task file's Acceptance Criteria, Technical Notes, and Files to Create/Modify
+3. Implement the task
+4. Update the task `Status:` from `Backlog` → `Complete`
+5. Move to the next unblocked task
 
 ---
 
 ## References
 
-- [Memory Tool Documentation](https://learn.microsoft.com/azure/ai-foundry/agents/how-to/memory-usage?view=foundry)
+- [Memory Tool Documentation (Python)](https://learn.microsoft.com/azure/ai-foundry/agents/how-to/memory-usage?pivots=python)
 - [Memory Concepts](https://learn.microsoft.com/azure/ai-foundry/agents/concepts/what-is-memory)
-- [Microsoft Agent Framework](https://github.com/microsoft/agent-framework)
-- [Azure AI Projects SDK](https://pypi.org/project/azure-ai-projects/)
+- [Azure AI Agents SDK (`azure-ai-agents`)](https://pypi.org/project/azure-ai-agents/)
+- [Azure AI Projects SDK (`azure-ai-projects`)](https://pypi.org/project/azure-ai-projects/)
+- [Azure AI Foundry Portal](https://ai.azure.com)
