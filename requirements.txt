@@ -1,0 +1,5 @@
+azure-ai-projects --pre
+azure-identity
+agent-framework --pre
+agent-framework-foundry-hosting --pre
+python-dotenv
